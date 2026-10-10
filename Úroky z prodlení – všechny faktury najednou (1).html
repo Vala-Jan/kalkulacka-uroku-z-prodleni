@@ -1,0 +1,670 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Úroky z prodlení – všechny faktury najednou</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --paper:#EEF1F4; --sheet:#FFFFFF; --ink:#18232E; --muted:#5A6774; --line:#D3D9E0;
+  --accent:#1D5C8F; --accent-ink:#FFFFFF; --soft:#E3ECF5; --warn:#A33A22; --warn-soft:#F7E4DF; --ok:#2E6B3F;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#141A20; --sheet:#1C242C; --ink:#E6ECF1; --muted:#9AA7B3; --line:#2F3A45;
+    --accent:#6FA8DC; --accent-ink:#0E1620; --soft:#23303D; --warn:#E8866F; --warn-soft:#3A2420; --ok:#7CC48F;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#141A20; --sheet:#1C242C; --ink:#E6ECF1; --muted:#9AA7B3; --line:#2F3A45;
+  --accent:#6FA8DC; --accent-ink:#0E1620; --soft:#23303D; --warn:#E8866F; --warn-soft:#3A2420; --ok:#7CC48F;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 "Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+.wrap{max-width:1080px;margin:0 auto;padding:28px 16px 60px}
+h1{font-size:clamp(1.7rem,4vw,2.4rem);line-height:1.1;margin:0 0 6px;font-weight:800;letter-spacing:-.02em}
+.lead{color:var(--muted);margin:0 0 28px;max-width:62ch}
+.step{background:var(--sheet);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px}
+.step h2{font-size:1.1rem;margin:0 0 12px;display:flex;gap:10px;align-items:center}
+.num{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:.9rem;font-weight:700}
+.drop{border:2px dashed var(--line);border-radius:8px;padding:22px;text-align:center;cursor:pointer}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--soft)}
+.drop strong{display:block;font-size:1.05rem}
+.drop span{color:var(--muted);font-size:.92rem}
+.or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:.9rem;margin:14px 0}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+input,select,textarea{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);width:100%}
+input[type=checkbox],input[type=radio]{width:auto}
+textarea{min-height:90px;font-size:.9rem;resize:vertical}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
+button{font:inherit;font-weight:600;border-radius:8px;padding:9px 16px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink)}
+button.ghost{background:transparent;color:var(--accent)}
+button.small{padding:5px 12px;font-size:.88rem}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.f{display:block;font-weight:600;font-size:.92rem;margin-bottom:4px}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg label{flex:1;text-align:center;padding:8px 6px;cursor:pointer;font-size:.92rem;font-weight:600}
+.seg input{position:absolute;opacity:0}
+.seg label:has(input:checked){background:var(--accent);color:var(--accent-ink)}
+.inline{display:flex;gap:8px;align-items:center;margin-top:8px}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:.92rem}
+.check input{margin-top:4px}
+.hint{color:var(--muted);font-size:.85rem;margin:6px 0 0}
+details{margin-top:16px}
+summary{cursor:pointer;font-weight:600;color:var(--accent)}
+.rates{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:10px}
+.rates div{display:flex;align-items:center;gap:6px;font-size:.88rem}
+.rates label{min-width:70px}
+.rates input{width:72px;padding:5px 6px}
+.msg{padding:10px 14px;border-radius:8px;margin-top:12px;font-size:.92rem;background:var(--soft)}
+.msg.err{background:var(--warn-soft);color:var(--warn)}
+.dateban{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;background:var(--sheet);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:12px 16px;margin-bottom:12px}
+.dateban b{font-size:1.15rem}
+.dateban.today{border-left-color:var(--warn)}
+.dateban .warn{color:var(--warn);font-size:.88rem;font-weight:600}
+.totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--sheet);margin-bottom:16px}
+.totals div{padding:16px 20px;border-right:1px solid var(--line)}
+.totals div:last-child{border-right:0;background:var(--accent);color:var(--accent-ink)}
+.totals small{display:block;font-size:.85rem;opacity:.85}
+.totals b{font-size:1.35rem;font-variant-numeric:tabular-nums}
+.totals div:last-child b{font-size:clamp(1.6rem,4vw,2.2rem);font-weight:800}
+.tablebox{overflow-x:auto;background:var(--sheet);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:.9rem;font-variant-numeric:tabular-nums}
+th,td{padding:8px 12px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--muted);background:var(--paper);position:sticky;top:0}
+td:nth-child(-n+2),th:nth-child(-n+2){text-align:left}
+td:nth-child(2){white-space:normal}
+tr:last-child td{border-bottom:0}
+td.int{font-weight:700}
+td.zero,tr.credit td{color:var(--muted)}
+.flag{display:inline-block;font-size:.75rem;padding:1px 6px;border-radius:4px;margin-left:6px;font-weight:600;background:var(--warn-soft);color:var(--warn)}
+.flag.part{background:var(--soft);color:var(--accent)}
+.flag.paid{background:var(--soft);color:var(--ok)}
+.flag.cred{background:var(--soft);color:var(--muted)}
+.foot{color:var(--muted);font-size:.85rem;margin-top:20px;max-width:75ch}
+.hidden{display:none!important}
+.letter{margin-top:16px;background:#fff;color:#111;border:1px solid var(--line);border-radius:6px;padding:40px 48px;font:14px/1.55 "Public Sans",Arial,sans-serif;max-width:800px}
+.letter h3{text-align:center;font-size:17px;margin:18px 0 2px;letter-spacing:.02em}
+.letter .sub{text-align:center;font-size:12px;color:#555;margin:0 0 20px}
+.letter .parties{display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:13px}
+.letter table{font-size:12.5px;margin:12px 0;border:1px solid #ccc}
+.letter th{background:#f2f2f2;color:#333;position:static}
+.letter th,.letter td{padding:5px 8px;border-bottom:1px solid #ddd;color:#111}
+.letter td:nth-child(2){white-space:nowrap}
+.letter tfoot td{font-weight:700;border-top:2px solid #999}
+@media print{
+  body{background:#fff}
+  body *{visibility:hidden}
+  #letter,#letter *{visibility:visible}
+  #letter{position:absolute;left:0;top:0;border:0;padding:0;max-width:none;margin:0}
+}
+@media (max-width:640px){
+  .totals div{border-right:0;border-bottom:1px solid var(--line)}
+  .letter{padding:24px 16px}
+  .letter .parties{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Úroky z prodlení</h1>
+  <p class="lead">Nahrajte export z GINISu se všemi fakturami. Kalkulačka spočítá zákonný nebo smluvní úrok u každé zvlášť, celkový dluh a připraví předžalobní výzvu. Nic se nikam neodesílá, vše se počítá jen ve vašem prohlížeči.</p>
+
+  <section class="step">
+    <h2><span class="num">1</span>Nahrajte faktury</h2>
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Vybrat soubor">
+      <strong>Přetáhněte sem soubor</strong>
+      <span>nebo klikněte a vyberte ho (export z GINISu: .xlsx, .xls, .csv)</span>
+    </div>
+    <input type="file" id="file" accept=".xlsx,.xls,.csv,.txt" hidden>
+    <div class="or">nebo vložte z Excelu</div>
+    <textarea id="paste" placeholder="V Excelu označte tabulku včetně záhlaví, zkopírujte Ctrl+C a vložte sem Ctrl+V."></textarea>
+    <div class="row">
+      <button id="btnPaste">Načíst vložená data</button>
+      <button class="ghost" id="btnDemo">Vyzkoušet na ukázce</button>
+    </div>
+    <p class="hint">Sloupce se najdou podle záhlaví (např. „Typ“, „VS“, „Název“, „Celk. částka“, „Datum spl.“, „Uhrazeno“, „Dat. úhrady“). Dobropisy (typ DOB nebo záporná částka) se neúročí a snižují dluh.</p>
+    <div id="msg"></div>
+    <div id="mapBox" class="hidden">
+      <p class="hint" style="margin:16px 0 8px">Použité sloupce (vybrané automaticky, případně opravte):</p>
+      <div class="settings" id="mapGrid"></div>
+    </div>
+  </section>
+
+  <section class="step">
+    <h2><span class="num">2</span>Nastavte výpočet</h2>
+    <div class="settings">
+      <div>
+        <label class="f" for="calcDate">Spočítat ke dni</label>
+        <input type="date" id="calcDate">
+        <p class="hint">Do tohoto dne se úročí to, co ještě není uhrazené. Uhrazené faktury se úročí jen do dne úhrady.</p>
+      </div>
+      <div>
+        <span class="f">Druh úroku</span>
+        <div class="seg" role="radiogroup" aria-label="Druh úroku">
+          <label><input type="radio" name="mode" value="zak" checked>Zákonný úrok</label>
+          <label><input type="radio" name="mode" value="smluv">Smluvní úrok</label>
+        </div>
+        <div id="contractBox" class="inline hidden">
+          <input type="number" id="cRate" step="0.01" min="0" value="0.05" style="width:110px" aria-label="Smluvní sazba">
+          <select id="cUnit" style="width:auto" aria-label="Jednotka sazby"><option value="den">% denně</option><option value="rok">% ročně</option></select>
+        </div>
+        <p class="hint" id="modeHint"></p>
+      </div>
+      <div>
+        <span class="f">Náklady na vymáhání</span>
+        <label class="check"><input type="checkbox" id="flat"><span>Připočíst paušál 1 200 Kč za každou fakturu v prodlení</span></label>
+        <p class="hint">Náklady spojené s uplatněním pohledávky podle nařízení vlády č. 351/2013 Sb. Uplatňují se hlavně vůči podnikatelům.</p>
+      </div>
+    </div>
+    <details>
+      <summary>Repo sazby ČNB podle pololetí (upravit)</summary>
+      <p class="hint">Sazba platná k 1. dni pololetí, k ní se přičítá 8 procentních bodů. Při změně sazby přidejte další pololetí.</p>
+      <div class="rates" id="rates"></div>
+      <div class="row">
+        <button class="ghost" id="btnAddRate">Přidat další pololetí</button>
+        <button class="ghost" id="btnResetRates">Obnovit výchozí sazby</button>
+      </div>
+    </details>
+  </section>
+
+  <section id="results" class="hidden">
+    <div class="dateban" id="dateBan">
+      <span>Spočítáno ke dni</span><b id="banDate"></b><span class="hint" style="margin:0" id="banMode"></span>
+      <span class="warn" id="banWarn"></span>
+      <button class="ghost small" id="btnChangeDate">Změnit datum</button>
+    </div>
+    <div class="totals">
+      <div><small>Neuhrazená jistina</small><b id="tPrin"></b></div>
+      <div><small>Úrok celkem</small><b id="tInt"></b></div>
+      <div id="tFlatBox" class="hidden"><small>Paušály</small><b id="tFlat"></b></div>
+      <div><small>Dluží celkem</small><b id="tAll"></b></div>
+    </div>
+    <div class="row" style="margin:0 0 12px">
+      <button id="btnCopy">Zkopírovat výsledky do Excelu</button>
+      <span id="copyMsg" class="hint" style="margin:0"></span>
+    </div>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>Faktura</th><th>Dlužník</th><th>Původně</th><th>Uhrazeno</th><th>Zbývá</th><th>Splatnost</th><th>Dní úroku</th><th>Sazba</th><th>Úrok</th><th>Dluží celkem</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <p class="foot" id="foot"></p>
+
+    <section class="step" style="margin-top:24px">
+      <h2><span class="num">3</span>Předžalobní výzva pro dlužníka</h2>
+      <p class="hint" style="margin:0 0 12px">Vytvoří výzvu k úhradě se seznamem faktur a vyčíslením úroku. Údaje o věřiteli se předvyplní z exportu, zbytek doplňte.</p>
+      <div class="settings">
+        <div><label class="f" for="lDebtor">Dlužník</label><select id="lDebtor"></select></div>
+        <div><label class="f" for="lCred">Věřitel</label><input id="lCred"></div>
+        <div><label class="f" for="lCredIco">IČO věřitele</label><input id="lCredIco"></div>
+        <div><label class="f" for="lCredAddr">Adresa věřitele</label><input id="lCredAddr" placeholder="Ulice č., PSČ Obec"></div>
+        <div><label class="f" for="lDebtAddr">Adresa dlužníka</label><input id="lDebtAddr" placeholder="Ulice č., PSČ Obec"></div>
+        <div><label class="f" for="lAcc">Číslo účtu pro úhradu</label><input id="lAcc" placeholder="123456789/0100"></div>
+        <div><label class="f" for="lDays">Lhůta k úhradě (dní od doručení)</label><input type="number" id="lDays" min="7" value="7"></div>
+        <div><label class="f" for="lPlace">Místo</label><input id="lPlace"></div>
+        <div><label class="f" for="lSign">Vyřizuje / podpis</label><input id="lSign" placeholder="Jméno, funkce, telefon"></div>
+      </div>
+      <div class="row">
+        <button id="btnLetter">Vytvořit výzvu</button>
+        <button class="ghost hidden" id="btnPrint">Vytisknout / uložit jako PDF</button>
+        <button class="ghost hidden" id="btnCopyLetter">Zkopírovat text výzvy</button>
+        <span id="letterMsg" class="hint" style="margin:0"></span>
+      </div>
+      <div id="letter" class="letter hidden"></div>
+    </section>
+  </section>
+</div>
+
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;};
+
+/* ---------- repo sazby ČNB k 1. dni pololetí ---------- */
+const DEFAULT_RATES={"2018-1":0.50,"2018-2":1.00,"2019-1":1.75,"2019-2":2.00,"2020-1":2.00,"2020-2":0.25,"2021-1":0.25,"2021-2":0.50,"2022-1":3.75,"2022-2":7.00,"2023-1":7.00,"2023-2":7.00,"2024-1":6.75,"2024-2":4.75,"2025-1":4.00,"2025-2":3.50,"2026-1":3.50,"2026-2":3.75};
+const RATES_KEY="uroky-rates";
+let rates=loadRates();
+function loadRates(){try{const s=localStorage.getItem(RATES_KEY);if(s)return JSON.parse(s);}catch(e){}return {...DEFAULT_RATES};}
+function saveRates(){try{localStorage.setItem(RATES_KEY,JSON.stringify(rates));}catch(e){}}
+const cmpKey=(a,b)=>{const [ay,ah]=a.split("-").map(Number),[by,bh]=b.split("-").map(Number);return ay-by||ah-bh;};
+const sortedKeys=()=>Object.keys(rates).sort(cmpKey);
+/* sazba pro pololetí daného dne; chybí-li, použije se poslední známá */
+function repoFor(n){
+  const [y,m]=parts(n),k=y+"-"+(m<=6?1:2);
+  if(k in rates) return rates[k];
+  let best=sortedKeys()[0];
+  for(const kk of sortedKeys()) if(cmpKey(kk,k)<=0) best=kk;
+  return rates[best];
+}
+
+/* ---------- datumy jako celá čísla dnů (UTC) ---------- */
+const DAY=864e5;
+const mk=(y,m,d)=>Math.floor(Date.UTC(y,m-1,d)/DAY);
+const parts=n=>{const d=new Date(n*DAY);return [d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate()];};
+const fmtD=n=>{const [y,m,d]=parts(n);return d+". "+m+". "+y;};
+const todayN=()=>{const t=new Date();return mk(t.getFullYear(),t.getMonth()+1,t.getDate());};
+const nToIso=n=>{const [y,m,d]=parts(n);return y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0");};
+function calcDate(){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec($("calcDate").value);return m?mk(+m[1],+m[2],+m[3]):todayN();}
+
+/* ---------- formátování ---------- */
+const nf=new Intl.NumberFormat("cs-CZ",{minimumFractionDigits:2,maximumFractionDigits:2});
+const pf=new Intl.NumberFormat("cs-CZ",{maximumFractionDigits:2});
+const money=v=>nf.format(v)+" Kč";
+const fmtPct=v=>pf.format(v)+" %";
+const esc=t=>String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- nastavení ---------- */
+const mode=()=>document.querySelector("input[name=mode]:checked").value;
+const flatOn=()=>$("flat").checked;
+function contractRaw(){const v=parseFloat(String($("cRate").value).replace(",","."));return isFinite(v)&&v>=0?v:0;}
+const contractYearly=()=>$("cUnit").value==="den"?contractRaw()*365:contractRaw();
+const contractTxt=()=>fmtPct(contractRaw())+($("cUnit").value==="den"?" denně":" ročně");
+
+/* ---------- výpočet ----------
+   Úrok běží ode dne po splatnosti. Sazba je pevná po celou dobu prodlení
+   (zákonná: repo k 1. dni pololetí, kdy prodlení začalo, + 8 p. b.).
+   Do dne platby včetně se úročí celá dlužná částka, potom jen zbytek. */
+function calc(inv,cd){
+  const paidUntil=p=>p.date==null||p.date<=cd;
+  if(inv.credit){
+    const used=inv.payments.filter(paidUntil).reduce((t,p)=>t+p.amt,0);
+    const left=Math.max(0,round2(inv.amount-used));
+    return {credit:true,paid:used,rest:left?-left:0,interest:0,days:"–",rateTxt:"–",flat:0};
+  }
+  const pays=inv.payments.filter(p=>p.date!=null&&p.date<=cd).sort((a,b)=>a.date-b.date);
+  const undated=inv.payments.filter(p=>p.date==null).reduce((t,p)=>t+p.amt,0);
+  const paid=pays.reduce((t,p)=>t+p.amt,0)+undated;
+  const start=inv.due+1;
+  const rate=mode()==="smluv"?contractYearly():repoFor(start)+8;
+  let bal=inv.amount-undated;        // platby bez data nelze zařadit v čase – snižují jistinu od začátku
+  let n=start,sum=0,days=0,i=0;
+  while(i<pays.length&&pays[i].date<start) bal-=pays[i++].amt;
+  while(n<=cd&&bal>0.004){
+    const segEnd=Math.min(cd,i<pays.length?pays[i].date:Infinity);
+    sum+=bal*rate/100*(segEnd-n+1)/365;
+    days+=segEnd-n+1;
+    while(i<pays.length&&pays[i].date===segEnd) bal-=pays[i++].amt;
+    n=segEnd+1;
+  }
+  const interest=round2(sum);
+  return {
+    paid,rest:Math.max(0,round2(inv.amount-paid)),interest,days,
+    rateTxt:days?(mode()==="smluv"?contractTxt():fmtPct(rate)):"–",
+    flat:flatOn()&&days>0?1200:0,
+    noDate:undated>0.004,
+    nPays:pays.length+(undated>0?1:0)
+  };
+}
+const round2=v=>Math.round(v*100)/100;
+
+/* ---------- čtení vstupu ---------- */
+function parseAmount(v){
+  if(typeof v==="number") return v;
+  let s=String(v??"").replace(/[\s ]/g,"").replace(/kč|czk/gi,"");
+  if(s.includes(",")&&s.includes(".")) s=s.replace(/\./g,"");
+  s=s.replace(",",".");
+  return s===""?NaN:Number(s);
+}
+function parseDate(v){
+  if(v==null||v==="") return null;
+  if(typeof v==="number") return v>20000&&v<80000?Math.round(v)-25569:null;   // sériové číslo Excelu
+  const s=String(v).trim();
+  let m=/^(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{2,4})/.exec(s);
+  if(m) return mk(+m[3]<100?+m[3]+2000:+m[3],+m[2],+m[1]);
+  if((m=/^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s))) return mk(+m[1],+m[2],+m[3]);
+  if((m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s))) return mk(+m[3],+m[1],+m[2]);
+  if(/^\d{5}$/.test(s)) return parseDate(Number(s));
+  return null;
+}
+const norm=s=>String(s??"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim();
+
+/* ---------- rozpoznání sloupců (GINIS i běžné exporty) ---------- */
+const FIELDS=[
+  ["type","Typ dokladu (FAK / DOB)",/^typ|druh dokl|^druh$/],
+  ["id","Číslo faktury / dokladu",/doklad|fakt|cisl|^vs|var.*sym/],
+  ["party","Dlužník (název)",/nazev|odberat|dodavat|partner|subjekt|plati|jmeno|firma|dluznik/],
+  ["ico","IČO dlužníka",/^ic(o)?\b|ico (dod|odb|subj|partn)/],
+  ["amount","Původní částka (předpis)",/predpis|castk|puvod|jistin|celkem|suma|hodnot|kc|czk|cena|dluh/],
+  ["due","Datum splatnosti",null],
+  ["paidAmt","Uhrazená částka",/uhrazen|zaplacen|uhrad|platb|splacen/],
+  ["paid","Datum úhrady",/(datum|dne|dat\.).*(uhrad|platb|zaplac|uhraz)|(uhrad|platb|zaplac|uhraz).*(datum|dne)/],
+  ["rest","Zbývá uhradit",/zbyva|zustat|saldo|nedoplat|neuhraz|k uhrade|dluzn/]
+];
+const RE_DUE=/splatn|(^|[^a-z])spl(\.|[^a-z]|$)/;
+const PICK_ORDER=["paid","rest","paidAmt","type","amount","id","ico","party"];
+const isCreditType=v=>/^dob|dobrop|opravn|credit|^cn$/.test(norm(v));
+
+function detectColumns(rows){
+  for(let r=0;r<Math.min(rows.length,15);r++){
+    const cells=rows[r].map(norm);
+    let due=cells.findIndex(c=>RE_DUE.test(c)&&!/vystav|zdan|uhrad|platb/.test(c));
+    if(due<0) due=cells.findIndex(c=>RE_DUE.test(c));
+    if(due<0) continue;
+    const c={header:r,due},used=[due];
+    for(const k of PICK_ORDER){
+      const re=FIELDS.find(f=>f[0]===k)[2];
+      const i=cells.findIndex((t,j)=>t&&!used.includes(j)&&re.test(t)&&!(k==="paidAmt"&&/datum|dne/.test(t)));
+      c[k]=i; if(i>=0) used.push(i);
+    }
+    if(c.amount>=0||c.rest>=0) return align(rows,c);
+  }
+  return {header:-1,type:-1,id:0,party:-1,ico:-1,amount:1,due:2,paidAmt:-1,paid:-1,rest:-1};
+}
+/* GINIS má sloučené buňky: hodnoty bývají o sloupec vedle záhlaví.
+   Prázdný sloupec se posune na nejbližší sousední, kde data opravdu jsou. */
+function align(rows,c){
+  const data=rows.slice(c.header+1,c.header+80);
+  const filled=i=>data.some(r=>String(r[i]??"").trim()!=="");
+  const keys=FIELDS.map(f=>f[0]);
+  const taken=new Set(keys.map(k=>c[k]).filter(i=>i>=0&&filled(i)));
+  for(const k of keys){
+    if(c[k]<0||filled(c[k])) continue;
+    for(const d of [-1,1,-2,2]){const j=c[k]+d;if(j>=0&&!taken.has(j)&&filled(j)){c[k]=j;taken.add(j);break;}}
+  }
+  return c;
+}
+
+/* ---------- sestavení faktur ---------- */
+let rawRows=[],map=null,invoices=[],results=[];
+function buildInvoices(rows,c){
+  const list=[],byKey=new Map();let skipped=0;
+  rows.slice(c.header+1).forEach((r,i)=>{
+    const get=k=>c[k]>=0?r[c[k]]:"";
+    const due=parseDate(get("due"));
+    let amount=parseAmount(get("amount")),paidAmt=parseAmount(get("paidAmt"));
+    const rest=Math.abs(parseAmount(get("rest")));
+    if(!isFinite(amount)&&isFinite(rest)) amount=rest+(isFinite(paidAmt)?paidAmt:0);
+    if(!isFinite(amount)||amount===0||due==null){skipped++;return;}
+    let credit=isCreditType(get("type"));
+    if(amount<0){credit=true;amount=-amount;paidAmt=Math.abs(paidAmt);}
+    const pdate=parseDate(get("paid"));
+    if(!isFinite(paidAmt)) paidAmt=isFinite(rest)?amount-rest:(pdate!=null?amount:0);
+    paidAmt=Math.max(0,Math.min(amount,paidAmt));
+    const pay=paidAmt>0.004?{amt:paidAmt,date:pdate}:null;
+    const rawId=String(get("id")??"").trim();
+    // stejný doklad na více řádcích = více splátek jedné faktury
+    const key=rawId?rawId+"|"+due+"|"+credit:null;
+    const prev=key&&byKey.get(key);
+    if(prev){prev.amount=Math.max(prev.amount,amount);if(pay)prev.payments.push(pay);prev.rows++;return;}
+    const inv={id:rawId||"Řádek "+(c.header+2+i),amount,due,credit,rows:1,payments:pay?[pay]:[],
+      party:String(get("party")??"").trim(),pico:String(get("ico")??"").trim()};
+    list.push(inv); if(key) byKey.set(key,inv);
+  });
+  return {list,skipped};
+}
+/* věřitel z hlavičky exportu GINIS („Ičo : 00281859 … Město Ivančice“) */
+function readCreditor(rows,upto){
+  for(const r of rows.slice(0,Math.max(0,upto))){
+    const i=r.findIndex(c=>/^ic(o)?\s*:?$/.test(norm(c)));
+    if(i<0) continue;
+    const vals=r.slice(i+1).map(c=>String(c).trim()).filter(Boolean);
+    const ico=vals.find(v=>/^\d{6,8}$/.test(v)),name=vals.find(v=>!/^\d+$/.test(v)&&!/:$/.test(v));
+    if(ico&&!$("lCredIco").value) $("lCredIco").value=ico;
+    if(name&&!$("lCred").value){
+      $("lCred").value=name;
+      const m=/^(m[eě]sto|obec|m[eě]stys)\s+(.+)$/i.exec(name);
+      if(m&&!$("lPlace").value) $("lPlace").value=m[2];
+    }
+    return;
+  }
+}
+function load(rows){
+  rawRows=rows.filter(r=>r&&r.some(c=>String(c).trim()!==""));
+  if(!rawRows.length){showMsg("err","V datech nejsou žádné řádky.");return;}
+  map=detectColumns(rawRows);
+  readCreditor(rawRows,map.header);
+  renderMap();apply();
+}
+function apply(){
+  const {list,skipped}=buildInvoices(rawRows,map);
+  invoices=list;
+  if(!list.length){
+    showMsg("err","Nenašla se žádná faktura s částkou a datem splatnosti. Níže vyberte, ve kterém sloupci je částka a ve kterém splatnost.");
+    $("results").classList.add("hidden");return;
+  }
+  const merged=list.filter(x=>x.rows>1).length,nCred=list.filter(x=>x.credit).length;
+  showMsg("ok","Načteno "+(list.length-nCred)+" faktur"
+    +(nCred?" a "+nCred+" dobropis"+(nCred===1?"":nCred<5?"y":"ů")+" (neúročí se)":"")
+    +(merged?" ("+merged+" s více splátkami na samostatných řádcích, sloučeno)":"")
+    +(skipped?". Přeskočeno "+skipped+" řádků bez částky nebo data, např. součty":"")
+    +". Zkontrolujte níže, že sloupce sedí.");
+  render();
+}
+function showMsg(type,text){$("msg").replaceChildren(el("div","msg "+type,text));}
+function renderMap(){
+  $("mapBox").classList.remove("hidden");
+  const width=Math.max(...rawRows.slice(0,30).map(r=>r.length));
+  const head=rawRows[map.header]||[],sample=rawRows[map.header+1]||[];
+  const col=i=>{let s="";for(i++;i>0;i=Math.floor((i-1)/26))s=String.fromCharCode(65+(i-1)%26)+s;return s;};
+  $("mapGrid").replaceChildren(...FIELDS.map(([k,label])=>{
+    const opt=k!=="due";
+    const sel=el("select");sel.id="map-"+k;
+    if(opt){const o=el("option",null,"— nepoužít —");o.value=-1;sel.append(o);}
+    for(let i=0;i<width;i++){
+      const h=String(head[i]??"").trim(),s=String(sample[i]??"").trim();
+      const o=el("option",null,col(i)+": "+(h||"(bez názvu)")+(s?"  – např. "+s.slice(0,24):""));o.value=i;sel.append(o);
+    }
+    sel.value=map[k];
+    sel.addEventListener("change",()=>{map[k]=+sel.value;apply();});
+    const lab=el("label","f",label+(opt?" (nepovinné)":""));lab.htmlFor=sel.id;
+    const w=el("div");w.append(lab,sel);return w;
+  }));
+}
+
+/* CSV z GINISu bývá ve windows-1250 a se středníky */
+function decodeText(buf){
+  try{return new TextDecoder("utf-8",{fatal:true}).decode(buf);}catch(e){}
+  return new TextDecoder("windows-1250").decode(buf);
+}
+function splitCsv(text){
+  const first=text.split(/\r?\n/).find(l=>l.trim())||"";
+  const d=[";","\t",","].sort((a,b)=>first.split(b).length-first.split(a).length)[0];
+  const rows=[];let row=[],cur="",q=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(q){if(ch==='"'){if(text[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=ch;}
+    else if(ch==='"') q=true;
+    else if(ch===d){row.push(cur);cur="";}
+    else if(ch==="\n"){row.push(cur.replace(/\r$/,""));rows.push(row);row=[];cur="";}
+    else cur+=ch;
+  }
+  if(cur||row.length){row.push(cur);rows.push(row);}
+  return rows;
+}
+function readFile(f){
+  const r=new FileReader();
+  r.onload=e=>{
+    const buf=new Uint8Array(e.target.result);
+    try{
+      if(/\.(csv|txt)$/i.test(f.name)){load(splitCsv(decodeText(buf).replace(/^﻿/,"")));return;}
+      const wb=XLSX.read(buf,{type:"array"});
+      const name=wb.SheetNames.find(n=>{const ref=wb.Sheets[n]["!ref"];return ref&&ref!=="A1";})||wb.SheetNames[0];
+      load(XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:true,defval:""}));
+    }catch(err){showMsg("err","Soubor se nepodařilo přečíst. V GINISu zkuste export do .xlsx nebo .csv a nahrajte znovu.");}
+  };
+  r.readAsArrayBuffer(f);
+}
+
+/* ---------- vykreslení výsledků ---------- */
+function render(){
+  const md=mode();
+  $("contractBox").classList.toggle("hidden",md!=="smluv");
+  $("modeHint").textContent=md==="zak"
+    ?"Repo sazba ČNB + 8 p. b. platná k 1. dni pololetí, kdy prodlení začalo (den po splatnosti). Sazba se po celou dobu nemění."
+    :"Sazba sjednaná ve smlouvě, např. 0,05 % denně. Má přednost před zákonným úrokem.";
+  if(!invoices.length) return;
+  const cd=calcDate();
+  results=invoices.map(inv=>({inv,r:calc(inv,cd)}));
+  let sr=0,si=0,sf=0,anyNoDate=false;
+  $("tbody").replaceChildren(...results.map(({inv,r})=>{
+    sr+=r.rest;si+=r.interest;sf+=r.flat;anyNoDate=anyNoDate||r.noDate;
+    const tr=el("tr",r.credit?"credit":"");
+    const cells=[inv.id,inv.party||"–",(r.credit?"−":"")+money(inv.amount),r.paid>0.004?money(r.paid):"–",money(r.rest),
+      fmtD(inv.due),r.days,r.rateTxt,money(r.interest),money(r.rest+r.interest+r.flat)];
+    cells.forEach((v,i)=>{
+      const td=el("td",null,v);
+      if(i===0){
+        if(r.credit) td.append(el("span","flag cred","dobropis – neúročí se"));
+        else if(r.rest<=0.004) td.append(el("span","flag paid","uhrazeno"+(r.nPays>1?" ("+r.nPays+" platby)":"")));
+        else if(r.paid>0.004) td.append(el("span","flag part","částečně"+(r.nPays>1?" ("+r.nPays+" platby)":"")));
+      }
+      if(i===3&&r.noDate){const f=el("span","flag","bez data");f.title="U úhrady chybí datum, proto se odečetla od začátku a úrok je jen ze zbytku.";td.append(f);}
+      if(i===8) td.className=r.interest>0?"int":"zero";
+      tr.append(td);
+    });
+    return tr;
+  }));
+  const isToday=cd===todayN();
+  $("banDate").textContent=fmtD(cd);
+  $("banMode").textContent=md==="zak"?"· zákonný úrok":"· smluvní úrok "+contractTxt();
+  $("dateBan").classList.toggle("today",isToday);
+  $("banWarn").textContent=isToday?"To je dnešek. Potřebujete výpočet k jinému dni (např. ke konci měsíce)? Změňte datum.":"";
+  $("tPrin").textContent=money(sr);
+  $("tInt").textContent=money(si);
+  $("tFlat").textContent=money(sf);
+  $("tFlatBox").classList.toggle("hidden",!flatOn());
+  $("tAll").textContent=money(sr+si+sf);
+  $("foot").textContent=(md==="zak"
+      ?"Úrok = jistina × (repo sazba ČNB + 8 %) × počet dní / 365, ode dne po splatnosti. "
+      :"Úrok = jistina × smluvní sazba × počet dní (roční sazba / 365), ode dne po splatnosti. ")
+    +"U částečných úhrad se úročí celá částka do dne platby včetně, potom jen zbytek. Stejný doklad na více řádcích se bere jako více splátek. Dobropisy se neúročí, jejich nevyčerpaná část snižuje dluh. "
+    +"Platby se započítávají na jistinu; občanský zákoník (§ 1932) bez jiné dohody započítává platbu nejdřív na úrok, takže skutečný úrok může vyjít o něco vyšší. Výpočet je orientační."
+    +(anyNoDate?" U plateb označených „bez data“ chybí datum úhrady, úrok proto může vyjít nižší než ve skutečnosti.":"");
+  $("results").classList.remove("hidden");
+  fillDebtors();
+  if(!$("letter").classList.contains("hidden")) buildLetter();
+}
+
+/* ---------- předžalobní výzva ---------- */
+const debtorKey=inv=>inv.pico||inv.party||"—";
+function fillDebtors(){
+  const sel=$("lDebtor"),prev=sel.value,groups=new Map();
+  for(const {inv,r} of results){
+    const k=debtorKey(inv);
+    const g=groups.get(k)||{name:inv.party||"Neuvedený dlužník",ico:inv.pico,total:0};
+    g.total+=r.rest+r.interest+r.flat;groups.set(k,g);
+  }
+  sel.replaceChildren(...[...groups].sort((a,b)=>b[1].total-a[1].total).map(([k,g])=>{
+    const o=el("option",null,g.name+(g.ico?" (IČO "+g.ico+")":"")+" – "+money(g.total));o.value=k;return o;}));
+  if(groups.has(prev)) sel.value=prev;
+}
+function buildLetter(){
+  const v=id=>$(id).value.trim();
+  const rows=results.filter(({inv,r})=>debtorKey(inv)===$("lDebtor").value&&(r.credit?r.rest<0:r.rest+r.interest+r.flat>0.004));
+  if(!rows.length){$("letterMsg").textContent="U vybraného dlužníka není nic k vymáhání.";return;}
+  const debtor=rows[0].inv,flat=flatOn(),R="<td style='text-align:right'>";
+  let J=0,U=0,P=0;
+  const body=rows.map(({inv,r})=>{
+    J+=r.rest;U+=r.interest;P+=r.flat;
+    return "<tr><td>"+esc(inv.id)+(r.credit?" (dobropis)":"")+"</td><td>"+fmtD(inv.due)+"</td>"+R+money(r.rest)+"</td>"+R+esc(r.rateTxt)+"</td>"+R+r.days+"</td>"+R+money(r.interest)+"</td>"
+      +(flat?R+money(r.flat)+"</td>":"")+R+money(r.rest+r.interest+r.flat)+"</td></tr>";
+  }).join("");
+  const T=J+U+P,lhuta=Math.max(7,parseInt(v("lDays"))||7);
+  const basis=mode()==="zak"
+    ?"Úrok z prodlení je vyčíslen v zákonné výši podle § 1970 zákona č. 89/2012 Sb., občanský zákoník, a nařízení vlády č. 351/2013 Sb., tj. ve výši repo sazby ČNB platné k prvnímu dni kalendářního pololetí, v němž prodlení nastalo, zvýšené o 8 procentních bodů."
+    :"Úrok z prodlení je vyčíslen ve výši "+esc(contractTxt())+" sjednané ve smlouvě.";
+  const th=["Faktura / VS","Splatnost","Neuhrazeno","Sazba","Dní","Úrok"].concat(flat?["Náklady"]:[],["Celkem"])
+    .map((h,i)=>"<th"+(i>1?" style='text-align:right'":"")+">"+h+"</th>").join("");
+  $("letter").innerHTML=
+    "<div class='parties'><div><b>Věřitel:</b><br>"+esc(v("lCred")||"……………")+"<br>"+(v("lCredIco")?"IČO: "+esc(v("lCredIco"))+"<br>":"")+esc(v("lCredAddr"))+"</div>"
+    +"<div><b>Dlužník:</b><br>"+esc(debtor.party||"……………")+"<br>"+(debtor.pico?"IČO: "+esc(debtor.pico)+"<br>":"")+esc(v("lDebtAddr")||"……………")+"</div></div>"
+    +"<p style='text-align:right;margin:18px 0 0'>"+esc(v("lPlace")||"……………")+" dne "+fmtD(todayN())+"</p>"
+    +"<h3>PŘEDŽALOBNÍ VÝZVA K ÚHRADĚ DLUHU</h3><p class='sub'>podle § 142a zákona č. 99/1963 Sb., občanský soudní řád</p>"
+    +"<p>Vážení,</p><p>evidujeme za Vámi níže uvedené pohledávky, které nebyly ve lhůtě splatnosti uhrazeny. Ke dni "+fmtD(calcDate())+" činí Váš dluh celkem <b>"+money(T)+"</b>, z toho neuhrazená jistina "+money(J)+" a úrok z prodlení "+money(U)+(P?" a náklady spojené s uplatněním pohledávek "+money(P):"")+".</p>"
+    +"<table><thead><tr>"+th+"</tr></thead><tbody>"+body+"</tbody><tfoot><tr><td colspan='2'>Celkem</td>"+R+money(J)+"</td><td></td><td></td>"+R+money(U)+"</td>"+(flat?R+money(P)+"</td>":"")+R+money(T)+"</td></tr></tfoot></table>"
+    +"<p>"+basis+" U faktur uhrazených po splatnosti je úrok počítán do dne úhrady, u neuhrazených částek běží úrok dále až do zaplacení."+(P?" Náklady spojené s uplatněním pohledávky jsou účtovány ve výši 1 200 Kč za každou pohledávku podle § 3 nařízení vlády č. 351/2013 Sb.":"")+"</p>"
+    +"<p>Vyzýváme Vás k úhradě celé dlužné částky do <b>"+lhuta+" dnů</b> od doručení této výzvy"+(v("lAcc")?" na účet č. <b>"+esc(v("lAcc"))+"</b>, jako variabilní symbol uveďte číslo příslušné faktury":"")+".</p>"
+    +"<p>Pokud dluh v uvedené lhůtě neuhradíte, budeme nuceni svůj nárok uplatnit u soudu bez dalšího upozornění. Tím Vám mohou vzniknout další náklady, zejména soudní poplatek a náklady řízení.</p>"
+    +"<p>Tato výzva je zároveň výzvou ke splnění povinnosti podle § 142a občanského soudního řádu.</p>"
+    +"<p style='margin-top:36px'>S pozdravem</p><p style='margin-top:40px'>……………………………<br>"+esc(v("lSign")||v("lCred"))+"</p>";
+  ["letter","btnPrint","btnCopyLetter"].forEach(id=>$(id).classList.remove("hidden"));
+  $("letterMsg").textContent="Výzvu zkontrolujte. Musí být doručena dlužníkovi alespoň 7 dní před podáním žaloby.";
+}
+
+/* ---------- editor sazeb ---------- */
+function renderRates(){
+  $("rates").replaceChildren(...sortedKeys().reverse().map(k=>{
+    const [y,h]=k.split("-");
+    const inp=el("input");inp.type="number";inp.step="0.05";inp.id="r"+k;inp.value=rates[k];
+    inp.addEventListener("change",()=>{const x=parseFloat(inp.value);if(isFinite(x)){rates[k]=x;saveRates();render();}});
+    const lab=el("label",null,(h==="1"?"1. 1. ":"1. 7. ")+y);lab.htmlFor=inp.id;
+    const d=el("div");d.append(lab,inp,el("span",null,"%"));return d;
+  }));
+}
+
+/* ---------- schránka ---------- */
+async function copyText(text,msgEl,okText){
+  try{await navigator.clipboard.writeText(text);msgEl.textContent=okText;}
+  catch(e){
+    const ta=el("textarea");ta.value=text;document.body.append(ta);ta.select();
+    try{document.execCommand("copy");msgEl.textContent=okText;}catch(_){msgEl.textContent="Kopírování se nepodařilo, označte obsah myší a zkopírujte ho.";}
+    ta.remove();
+  }
+}
+
+/* ---------- události ---------- */
+const drop=$("drop"),file=$("file");
+drop.addEventListener("click",()=>file.click());
+drop.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();file.click();}});
+file.addEventListener("change",()=>{if(file.files[0])readFile(file.files[0]);file.value="";});
+["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
+drop.addEventListener("drop",e=>{const f=e.dataTransfer.files[0];if(f)readFile(f);});
+const loadTsv=t=>load(t.split(/\r?\n/).map(l=>l.split("\t")));
+$("btnPaste").addEventListener("click",()=>{
+  const t=$("paste").value;
+  if(!t.trim()){showMsg("err","Pole je prázdné. Zkopírujte tabulku v Excelu a vložte ji sem.");return;}
+  loadTsv(t);
+});
+$("btnDemo").addEventListener("click",()=>{
+  $("paste").value="Typ\tČíslo dokladu\tNázev\tPředpis\tDatum splatnosti\tUhrazeno\tDatum úhrady\nFAK\t2024001\tVzor s.r.o.\t48 500,00\t15.1.2024\t\t\nFAK\t2024017\tVzor s.r.o.\t12 300,00\t28.3.2024\t12 300,00\t30.9.2024\nFAK\t2024052\tVzor s.r.o.\t96 000,00\t10.7.2024\t40 000,00\t15.1.2025\nFAK\t2024052\tVzor s.r.o.\t96 000,00\t10.7.2024\t20 000,00\t20.6.2025\nFAK\t2025008\tVzor s.r.o.\t7 450,50\t5.2.2025\t3 000,00\t1.4.2025\nDOB\t2025019\tVzor s.r.o.\t2 500,00\t28.2.2025\t2 500,00\t10.3.2025\nFAK\t2025031\tVzor s.r.o.\t150 000,00\t30.6.2025\t\t";
+  loadTsv($("paste").value);
+});
+$("btnChangeDate").addEventListener("click",()=>{
+  const d=$("calcDate");d.scrollIntoView({behavior:"smooth",block:"center"});
+  setTimeout(()=>{d.focus();try{d.showPicker&&d.showPicker();}catch(e){}},350);
+});
+document.querySelectorAll("input[name=mode]").forEach(r=>r.addEventListener("change",render));
+["calcDate","cRate","cUnit","flat"].forEach(id=>$(id).addEventListener("input",render));
+$("btnAddRate").addEventListener("click",()=>{
+  const last=sortedKeys().pop();let [y,h]=last.split("-").map(Number);
+  if(h===1)h=2;else{h=1;y++;}
+  rates[y+"-"+h]=rates[last];saveRates();renderRates();render();
+});
+$("btnResetRates").addEventListener("click",()=>{rates={...DEFAULT_RATES};saveRates();renderRates();render();});
+$("btnCopy").addEventListener("click",()=>{
+  const num=v=>v.toFixed(2).replace(".",",");
+  const lines=[["Faktura","Dlužník","Původně","Uhrazeno","Zbývá","Splatnost","Dní úroku","Sazba","Úrok","Dluží celkem"]]
+    .concat(results.map(({inv,r})=>[inv.id+(r.credit?" (dobropis)":""),inv.party,num(r.credit?-inv.amount:inv.amount),num(r.paid),num(r.rest),
+      fmtD(inv.due),r.days,r.rateTxt,num(r.interest),num(r.rest+r.interest+r.flat)]));
+  copyText(lines.map(l=>l.join("\t")).join("\n"),$("copyMsg"),"Zkopírováno. V Excelu stačí Ctrl+V.");
+});
+$("btnLetter").addEventListener("click",buildLetter);
+$("lDebtor").addEventListener("change",()=>{$("lDebtAddr").value="";if(!$("letter").classList.contains("hidden"))buildLetter();});
+$("btnPrint").addEventListener("click",()=>{try{window.print();}catch(e){$("letterMsg").textContent="Tisk se nepodařil. Použijte Zkopírovat text výzvy a vložte ho do Wordu.";}});
+$("btnCopyLetter").addEventListener("click",async()=>{
+  const L=$("letter");
+  try{
+    await navigator.clipboard.write([new ClipboardItem({"text/html":new Blob([L.innerHTML],{type:"text/html"}),"text/plain":new Blob([L.innerText],{type:"text/plain"})})]);
+    $("letterMsg").textContent="Zkopírováno. Vložte do Wordu (Ctrl+V), tabulka zůstane.";
+  }catch(e){copyText(L.innerText,$("letterMsg"),"Zkopírováno jako text.");}
+});
+
+$("calcDate").value=nToIso(todayN());
+renderRates();render();
+})();
+</script>
+</body>
+</html>
+
+</body></html>
